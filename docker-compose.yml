@@ -1,22 +1,32 @@
 version: '3.3'
+networks:
+  gmbh_nets:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.195.0/24
+          gateway: 192.168.195.1
 services:
   database:
-    image: "mysql:8.0.29"
+    image: ubuntu/mysql:8.0-20.04_beta
     environment:
       - MYSQL_ROOT_PASSWORD=root
-    ports:
-      - "33060:3306"
+      - MYSQL_DATABASE=hierarchy_gmbh
     volumes:
-      - ./mysql-dump:/docker-entrypoint-initdb.d
-      - type: volume
-        source: database-data
-        target: /var/lib/mysql
+      - ./mysql-dump:/var/lib/mysql
+    networks:
+      gmbh_nets:
   server:
     build:
       context: ./
       dockerfile: ./server.Dockerfile
+    links:
+      - database:mysql_db
+    restart: always
     ports:
       - "8080:8080"
+    networks:
+      gmbh_nets:
     depends_on:
       - database
 volumes:
