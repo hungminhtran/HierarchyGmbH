@@ -18,10 +18,10 @@ public class EmployeeRelationshipEntity {
     }
 
     public String getEmployee() {
-        return employee;
+        return this.employee;
     }
 
     public String getSupervisor() {
-        return supervisor;
+        return this.supervisor;
     }
 }
