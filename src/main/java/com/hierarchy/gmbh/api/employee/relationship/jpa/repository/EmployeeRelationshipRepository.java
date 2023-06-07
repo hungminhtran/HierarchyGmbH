@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface EmployeeRelationshipRepository extends CrudRepository<EmployeeRelationshipEntity, String> {
 
-	public List<EmployeeRelationshipEntity> findAll(Pageable pageable);
+    public List<EmployeeRelationshipEntity> findAll(Pageable pageable);
 
 }

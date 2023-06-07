@@ -6,25 +6,25 @@ import javax.persistence.Id;
 @Entity
 public class EmployeeRelationshipEntity {
 
-	@Id
-	private String employee;
+    @Id
+    private String employee;
 
-	private String supervisor;
+    private String supervisor;
 
-	public EmployeeRelationshipEntity() {
-	}
+    public EmployeeRelationshipEntity() {
+    }
 
-	public EmployeeRelationshipEntity(String employee, String supervisor) {
-		this.employee = employee;
-		this.supervisor = supervisor;
-	}
+    public EmployeeRelationshipEntity(String employee, String supervisor) {
+        this.employee = employee;
+        this.supervisor = supervisor;
+    }
 
-	public String getEmployee() {
-		return employee;
-	}
+    public String getEmployee() {
+        return employee;
+    }
 
-	public String getSupervisor() {
-		return supervisor;
-	}
+    public String getSupervisor() {
+        return supervisor;
+    }
 
 }
