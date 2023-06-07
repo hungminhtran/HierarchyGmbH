@@ -4,15 +4,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.hierarchy.gmbh.api.employee.relationship.jpa.entity.EmployeeRelationshipEntity;
 import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.EmployeeRelationshipRepository;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
+
+import javax.annotation.PostConstruct;
 
 @Service
 public class EmployeeRelationshipService {
@@ -27,8 +29,117 @@ public class EmployeeRelationshipService {
 
     private static volatile String rootEmployee;
 
-    @Autowired
-    private EmployeeRelationshipRepository employeeRelationshipRepository;
+    @Autowired private EmployeeRelationshipRepository employeeRelationshipRepository;
+
+    private static boolean isSupervisor(
+            String employee, String supervisor, Map<String, String> employeeRelationshipMap) {
+        Set<String> travelled = new HashSet<>();
+        while (employeeRelationshipMap.containsKey(employee)) {
+            if (travelled.contains(employee)) {
+                return false;
+            }
+            travelled.add(employee);
+            String localSupervisor = employeeRelationshipMap.get(employee);
+            if (localSupervisor.equals(supervisor)) {
+                return true;
+            }
+            employee = localSupervisor;
+        }
+        return false;
+    }
+
+    private static String getNewRootEmployee(
+            Map<String, String> employeeRelationshipMapArg, String currentRootEmployee) {
+        String localRootEmployee = currentRootEmployee;
+        while (employeeRelationshipMapArg.containsKey(localRootEmployee)) {
+            String supervisor = employeeRelationshipMapArg.get(localRootEmployee);
+            if (supervisor == null || supervisor.isEmpty()) {
+                break;
+            }
+            localRootEmployee = supervisor;
+        }
+        return localRootEmployee;
+    }
+
+    private static Set<String> validateMultipleRoot(
+            Map<String, String> entities,
+            String currentRootEmployee,
+            Map<String, String> employeeRelationshipMap) {
+        Set<String> multipleRootErrorSet = new HashSet<>();
+
+        for (String employee : entities.keySet()) {
+            String supervisor = entities.get(employee);
+            if (supervisor == null || supervisor.isEmpty()) {
+                if (currentRootEmployee == null || currentRootEmployee.isEmpty()) {
+                    currentRootEmployee = employee;
+                } else if (!currentRootEmployee.equals(employee)) {
+                    multipleRootErrorSet.add(employee + " is left as a root employee.");
+                }
+            } else {
+                String supervisorOfSupervisor = employeeRelationshipMap.get(supervisor);
+
+                if ((supervisorOfSupervisor == null || supervisorOfSupervisor.isEmpty())) {
+                    if (currentRootEmployee == null || currentRootEmployee.isEmpty()) {
+                        currentRootEmployee = employee;
+                    } else if (!currentRootEmployee.equals(supervisor)) {
+                        multipleRootErrorSet.add(supervisor + " is left as a root employee.");
+                    }
+                }
+            }
+        }
+        return multipleRootErrorSet;
+    }
+
+    private static Set<String> validateCircularRelationship(
+            Map<String, String> entities, Map<String, String> employeeRelationshipMap) {
+        Set<String> circularErrorSet = new HashSet<>();
+        for (String employee : entities.keySet()) {
+            String supervisor = entities.get(employee);
+            if (isSupervisor(supervisor, employee, employeeRelationshipMap)) {
+                circularErrorSet.add(employee + " and " + supervisor + " are created a cycle.");
+            }
+        }
+        return circularErrorSet;
+    }
+
+    private static String validateEmployeeRelationshipEntities(Map<String, String> entities) {
+        MUTEX.lock();
+        try {
+            Map<String, String> localEmployeeRelationshipMap =
+                    new HashMap<>(EMPLOYEE_RELATIONSHIP_MAP);
+            localEmployeeRelationshipMap.putAll(entities);
+            String localRootEmployee =
+                    getNewRootEmployee(localEmployeeRelationshipMap, rootEmployee);
+            List<String> allErrorMessageSet = new ArrayList<>();
+            // check if there are multiple root node
+            allErrorMessageSet.addAll(
+                    validateMultipleRoot(
+                            entities, localRootEmployee, localEmployeeRelationshipMap));
+            // check if a relationship is circular
+            allErrorMessageSet.addAll(
+                    validateCircularRelationship(entities, localEmployeeRelationshipMap));
+
+            if (allErrorMessageSet.size() == 0) {
+                EMPLOYEE_RELATIONSHIP_MAP.putAll(entities);
+                rootEmployee = localRootEmployee;
+                MUTEX.unlock();
+                return "";
+            } else {
+                MUTEX.unlock();
+                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+                try {
+                    return ow.writeValueAsString(allErrorMessageSet);
+                } catch (Exception e) {
+                    LOGGER.error("error when convert error message to json", e.getMessage());
+                    return null;
+                }
+            }
+        } finally {
+            if (MUTEX.isHeldByCurrentThread()) {
+                MUTEX.unlock();
+            }
+        }
+    }
 
     @PostConstruct
     private void init() {
@@ -44,12 +155,18 @@ public class EmployeeRelationshipService {
         try {
             List<EmployeeRelationshipEntity> entities;
             int page = 0;
-            while ((entities = employeeRelationshipRepository.findAll(PageRequest.of(page, PAGE_LIMIT))) != null) {
+            while ((entities =
+                            employeeRelationshipRepository.findAll(
+                                    PageRequest.of(page, PAGE_LIMIT)))
+                    != null) {
                 if (entities.size() == 0) {
                     break;
                 }
                 entities.stream()
-                    .forEach(entity -> EMPLOYEE_RELATIONSHIP_MAP.put(entity.getEmployee(), entity.getSupervisor()));
+                        .forEach(
+                                entity ->
+                                        EMPLOYEE_RELATIONSHIP_MAP.put(
+                                                entity.getEmployee(), entity.getSupervisor()));
                 page++;
             }
             // Data logic should be valid when reading from database
@@ -66,111 +183,11 @@ public class EmployeeRelationshipService {
                 }
             }
             MUTEX.unlock();
-        }
-        finally {
+        } finally {
             if (MUTEX.isHeldByCurrentThread()) {
                 MUTEX.unlock();
             }
             LOGGER.info("init data complete");
-        }
-    }
-
-    private static boolean isSupervisor(String employee, String supervisor,
-            Map<String, String> employeeRelationshipMap) {
-        Set<String> travelled = new HashSet<>();
-        while (employeeRelationshipMap.containsKey(employee)) {
-            if (travelled.contains(employee)) {
-                return false;
-            }
-            travelled.add(employee);
-            String localSupervisor = employeeRelationshipMap.get(employee);
-            if (localSupervisor.equals(supervisor)) {
-                return true;
-            }
-            employee = localSupervisor;
-
-        }
-        return false;
-    }
-
-    private static String getNewRootEmployee(Map<String, String> employeeRelationshipMapArg,
-            String currentRootEmployee) {
-        String localRootEmployee = currentRootEmployee;
-        while (employeeRelationshipMapArg.containsKey(localRootEmployee)) {
-            String supervisor = employeeRelationshipMapArg.get(localRootEmployee);
-            if (supervisor == null || supervisor.isEmpty()) {
-                break;
-            }
-            localRootEmployee = supervisor;
-        }
-        return localRootEmployee;
-    }
-
-    private static String validateEmployeeRelationshipEntities(Map<String, String> entities) {
-        MUTEX.lock();
-        try {
-            Set<String> multipleRootErrorSet = new HashSet<>();
-            Map<String, String> localEmployeeNodeMap = new HashMap<>(EMPLOYEE_RELATIONSHIP_MAP);
-            localEmployeeNodeMap.putAll(entities);
-            // check if there are multiple root node
-            String localRootEmployee = getNewRootEmployee(localEmployeeNodeMap, rootEmployee);
-            for (String employee : entities.keySet()) {
-                String supervisor = entities.get(employee);
-                if (supervisor == null || supervisor.isEmpty()) {
-                    if (localRootEmployee == null || localRootEmployee.isEmpty()) {
-                        localRootEmployee = employee;
-                    }
-                    else if (!localRootEmployee.equals(employee)) {
-                        multipleRootErrorSet.add(employee + " is left as a root employee.");
-                    }
-                }
-                else {
-                    String supervisorOfSupervisor = localEmployeeNodeMap.get(supervisor);
-
-                    if ((supervisorOfSupervisor == null || supervisorOfSupervisor.isEmpty())) {
-                        if (localRootEmployee == null || localRootEmployee.isEmpty()) {
-                            localRootEmployee = employee;
-                        }
-                        else if (!localRootEmployee.equals(supervisor)) {
-                            multipleRootErrorSet.add(supervisor + " is left as a root employee.");
-                        }
-                    }
-                }
-            }
-            // check if a relationship is circular
-            Set<String> circularErrorSet = new HashSet<>();
-            for (String employee : entities.keySet()) {
-                String supervisor = entities.get(employee);
-                if (isSupervisor(supervisor, employee, localEmployeeNodeMap)) {
-                    circularErrorSet.add(employee + " and " + supervisor + " are created a cycle.");
-                }
-            }
-            List<String> allErrorMessageSet = new ArrayList<>();
-            allErrorMessageSet.addAll(multipleRootErrorSet);
-            allErrorMessageSet.addAll(circularErrorSet);
-
-            if (allErrorMessageSet.size() == 0) {
-                EMPLOYEE_RELATIONSHIP_MAP.putAll(entities);
-                rootEmployee = localRootEmployee;
-                MUTEX.unlock();
-                return "";
-            }
-            else {
-                MUTEX.unlock();
-                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-                try {
-                    return ow.writeValueAsString(allErrorMessageSet);
-                }
-                catch (Exception e) {
-                    LOGGER.error("error when convert error message to json", e.getMessage());
-                    return null;
-                }
-            }
-        }
-        finally {
-            if (MUTEX.isHeldByCurrentThread()) {
-                MUTEX.unlock();
-            }
         }
     }
 
@@ -179,8 +196,7 @@ public class EmployeeRelationshipService {
         if (supervisor != null) {
             if (EMPLOYEE_RELATIONSHIP_MAP.containsKey(supervisor)) {
                 return EMPLOYEE_RELATIONSHIP_MAP.get(supervisor);
-            }
-            else {
+            } else {
                 return "";
             }
         }
@@ -192,8 +208,7 @@ public class EmployeeRelationshipService {
         Map<String, String> rawData;
         try {
             rawData = objectMapper.readValue(rawDataJsonStr, Map.class);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOGGER.error("data from user is not a json string", e.getMessage());
             return null;
         }
@@ -211,5 +226,4 @@ public class EmployeeRelationshipService {
 
         return result;
     }
-
 }

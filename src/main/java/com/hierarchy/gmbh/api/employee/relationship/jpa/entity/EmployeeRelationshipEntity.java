@@ -6,13 +6,11 @@ import javax.persistence.Id;
 @Entity
 public class EmployeeRelationshipEntity {
 
-    @Id
-    private String employee;
+    @Id private String employee;
 
     private String supervisor;
 
-    public EmployeeRelationshipEntity() {
-    }
+    public EmployeeRelationshipEntity() {}
 
     public EmployeeRelationshipEntity(String employee, String supervisor) {
         this.employee = employee;
@@ -26,5 +24,4 @@ public class EmployeeRelationshipEntity {
     public String getSupervisor() {
         return supervisor;
     }
-
 }

@@ -9,5 +9,4 @@ public class HierarchyGmbHApplication {
     public static void main(String[] args) {
         SpringApplication.run(HierarchyGmbHApplication.class, args);
     }
-
 }
