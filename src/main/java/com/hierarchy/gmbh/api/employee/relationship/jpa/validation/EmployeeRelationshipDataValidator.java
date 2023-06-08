@@ -25,10 +25,10 @@ public class EmployeeRelationshipDataValidator {
 
     private static final Integer PAGE_LIMIT = 1000;
 
-    private static volatile ReentrantLock MUTEX = new ReentrantLock();
+    private static final ReentrantLock MUTEX = new ReentrantLock();
 
-    private static volatile Map<String, String> EMPLOYEE_SUPERVISOR_MAP = new HashMap<>();
-    private static volatile Map<String, Set<String>> SUPERVISOR_EMPLOYEE_MAP = new HashMap<>();
+    private static final Map<String, String> EMPLOYEE_SUPERVISOR_MAP = new HashMap<>();
+    private static final Map<String, Set<String>> SUPERVISOR_EMPLOYEE_MAP = new HashMap<>();
 
     private static volatile String rootEmployee;
 
@@ -75,6 +75,18 @@ public class EmployeeRelationshipDataValidator {
         }
     }
 
+    public static void lock() {
+        if (!MUTEX.isHeldByCurrentThread()) {
+            MUTEX.lock();
+        }
+    }
+
+    public static void unlock() {
+        if (MUTEX.isHeldByCurrentThread()) {
+            MUTEX.unlock();
+        }
+    }
+
     private boolean isEmployeeSupervisorOfSupervisor(
             String employee, String supervisor, Map<String, String> employeeSupervisorMap) {
         Set<String> travelled = new HashSet<>();
@@ -94,7 +106,6 @@ public class EmployeeRelationshipDataValidator {
 
     private String getNewRootEmployee(
             Map<String, String> employeeSupervisorMap, String currentRootEmployee) {
-        LOGGER.error("current root " + currentRootEmployee);
         if (currentRootEmployee == null) {
             for (String employee : employeeSupervisorMap.keySet()) {
                 String supervisor = employeeSupervisorMap.get(employee);
@@ -288,17 +299,5 @@ public class EmployeeRelationshipDataValidator {
         }
 
         return result;
-    }
-
-    public static void lock() {
-        if (!MUTEX.isHeldByCurrentThread()) {
-            MUTEX.lock();
-        }
-    }
-
-    public static void unlock() {
-        if (MUTEX.isHeldByCurrentThread()) {
-            MUTEX.unlock();
-        }
     }
 }

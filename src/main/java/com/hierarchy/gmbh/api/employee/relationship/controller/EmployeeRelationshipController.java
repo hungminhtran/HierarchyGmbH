@@ -10,12 +10,14 @@ public class EmployeeRelationshipController {
 
     @Autowired private EmployeeRelationshipService employeeRelationshipService;
 
-    @PostMapping("/add-employee-relationship")
+    @PostMapping(value = "/add-employee-relationship", produces = "application/json")
+    @ResponseBody
     public String setRelationship(@RequestBody String data) {
         return employeeRelationshipService.saveEmployeeData(data);
     }
 
-    @GetMapping("/employee-supervisor")
+    @GetMapping(value = "/employee-supervisor", produces = "application/json")
+    @ResponseBody
     public String getEmployeeSupervisor(@RequestParam String employee) {
         return employeeRelationshipService.getSupervisorOfSupervisorName(employee);
     }

@@ -4,8 +4,8 @@ import java.util.Collection;
 import java.util.Set;
 
 public class EmployeeRelationshipTreeNode {
-    private String key;
-    private Collection<EmployeeRelationshipTreeNode> children;
+    private final String key;
+    private final Collection<EmployeeRelationshipTreeNode> children;
 
     public EmployeeRelationshipTreeNode(String key, Set<EmployeeRelationshipTreeNode> children) {
         this.key = key;

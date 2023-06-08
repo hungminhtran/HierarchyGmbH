@@ -40,7 +40,7 @@ public class EmployeeRelationshipService {
     }
 
     public String getSupervisorOfSupervisorName(String employee) {
-        return getSupervisorOfEmployee(employee, 0, 1);
+        return getSupervisorOfEmployee(employee, 0, 2);
     }
 
     private String getSupervisorOfEmployee(String employee, int depth, int limitation) {
