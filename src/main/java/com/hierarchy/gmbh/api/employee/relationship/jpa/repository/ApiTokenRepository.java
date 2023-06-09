@@ -4,4 +4,4 @@ import com.hierarchy.gmbh.api.employee.relationship.jpa.entity.ApiTokenEntity;
 
 import org.springframework.data.repository.CrudRepository;
 
-public interface ApiTokenEntityRepository extends CrudRepository<ApiTokenEntity, String> {}
+public interface ApiTokenRepository extends CrudRepository<ApiTokenEntity, String> {}

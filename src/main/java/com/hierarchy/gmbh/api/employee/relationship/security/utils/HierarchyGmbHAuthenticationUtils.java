@@ -1,6 +1,6 @@
 package com.hierarchy.gmbh.api.employee.relationship.security.utils;
 
-import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.ApiTokenEntityRepository;
+import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.ApiTokenRepository;
 import com.hierarchy.gmbh.api.employee.relationship.security.data.HierarchyGmbHApiAuthenticationObject;
 
 import org.springframework.security.authentication.BadCredentialsException;
@@ -13,7 +13,7 @@ public class HierarchyGmbHAuthenticationUtils {
     private static final String AUTH_TOKEN_HEADER_NAME = "X-API-KEY";
 
     public static Authentication authenticate(
-            HttpServletRequest httpServletRequest, ApiTokenEntityRepository apiTokenRepository) {
+            HttpServletRequest httpServletRequest, ApiTokenRepository apiTokenRepository) {
         String userApiToken = httpServletRequest.getHeader(AUTH_TOKEN_HEADER_NAME);
 
         if (userApiToken == null || userApiToken.isEmpty()) {

@@ -1,6 +1,6 @@
 package com.hierarchy.gmbh.api.employee.relationship.security.config;
 
-import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.ApiTokenEntityRepository;
+import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.ApiTokenRepository;
 import com.hierarchy.gmbh.api.employee.relationship.security.filter.HierarchyGmbHAuthenticationFilter;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 public class HierarchyGmbHAuthenticationConfig {
-    @Autowired private ApiTokenEntityRepository apiTokenEntityRepository;
+    @Autowired private ApiTokenRepository apiTokenRepository;
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
@@ -30,7 +30,7 @@ public class HierarchyGmbHAuthenticationConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .addFilterBefore(
-                        new HierarchyGmbHAuthenticationFilter(apiTokenEntityRepository),
+                        new HierarchyGmbHAuthenticationFilter(apiTokenRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
