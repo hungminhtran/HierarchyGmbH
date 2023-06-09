@@ -42,8 +42,20 @@ public class EmployeeRelationshipService {
         LOGGER.info("data was initialized");
     }
 
-    public String getSupervisorOfSupervisorName(String employee) throws HierarchyGmbHException {
-        return getSupervisorOfEmployee(employee, 0, 2);
+    public EmployeeRelationshipRestResponse getSupervisorOfSupervisorName(String employee) {
+
+        try {
+            return new EmployeeRelationshipRestResponse(
+                    false, getSupervisorOfEmployee(employee, 0, 2));
+        } catch (HierarchyGmbHException e) {
+            if (e.getMessage().equals(employee)) {
+                return new EmployeeRelationshipRestResponse(
+                        true, "Employee doesn't have supervisor");
+            } else {
+                return new EmployeeRelationshipRestResponse(
+                        true, "Supervisor of the employee doesn't have supervisor");
+            }
+        }
     }
 
     private String getSupervisorOfEmployee(String employee, int depth, int limitation)
@@ -57,8 +69,7 @@ public class EmployeeRelationshipService {
             String supervisor = employeeRelationshipEntity.get().getSupervisor();
             return getSupervisorOfEmployee(supervisor, depth + 1, limitation);
         }
-        throw new HierarchyGmbHException(
-                "No supervisor exist in database", HttpStatus.UNPROCESSABLE_ENTITY.value());
+        throw new HierarchyGmbHException(employee, HttpStatus.UNPROCESSABLE_ENTITY.value());
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
@@ -91,13 +102,11 @@ public class EmployeeRelationshipService {
                     employeeRelationshipDataValidator.validateEmployeeRelationshipEntities(rawData);
 
             if (response.isError()) {
-                EmployeeRelationshipDataValidator.unlock();
                 throw new HierarchyGmbHException(
                         response.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY.value());
             }
             employeeRelationshipRepository.saveAll(entities);
             employeeRelationshipDataValidator.updateStaticData(rawData);
-            EmployeeRelationshipDataValidator.unlock();
 
             return response.getMessage();
         } finally {
