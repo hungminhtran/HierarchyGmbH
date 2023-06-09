@@ -192,6 +192,7 @@ public class EmployeeRelationshipDataValidator {
         List<String> allErrorMessageSet = new ArrayList<>();
 
         Map<String, String> localEmployeeSupervisorMap = new HashMap<>(EMPLOYEE_SUPERVISOR_MAP);
+        localEmployeeSupervisorMap.putAll(allNewRelationships);
 
         String localRootEmployee = getNewRootEmployee(localEmployeeSupervisorMap, rootEmployee);
 
