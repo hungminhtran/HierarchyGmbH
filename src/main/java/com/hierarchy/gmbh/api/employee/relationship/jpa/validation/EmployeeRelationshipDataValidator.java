@@ -132,33 +132,31 @@ public class EmployeeRelationshipDataValidator {
     }
 
     private Set<String> validateMultipleRoot(
-            Map<String, String> allNewRelationship,
-            String currentRootEmployee,
-            Map<String, String> employeeRelationshipMap) {
+            Map<String, String> allNewRelationship, Map<String, String> employeeRelationshipMap) {
+
+        String currentRootEmployee = getNewRootEmployee(employeeRelationshipMap, rootEmployee);
+
         Set<String> multipleRootErrorSet = new HashSet<>();
 
         for (String employee : allNewRelationship.keySet()) {
             String supervisor = allNewRelationship.get(employee);
             if (supervisor == null
                     || supervisor.isEmpty() && !employee.equals(currentRootEmployee)) {
-                if (currentRootEmployee == null) {
-                    currentRootEmployee = employee;
-                } else {
-                    multipleRootErrorSet.add(employee + " is left as a root employee.");
-                }
 
+                multipleRootErrorSet.add(employee + " is left as a root employee.");
             } else {
                 String supervisorOfSupervisor = employeeRelationshipMap.get(supervisor);
 
                 if ((supervisorOfSupervisor == null || supervisorOfSupervisor.isEmpty())
+                        && supervisor != null
                         && !supervisor.equals(currentRootEmployee)) {
-                    if (currentRootEmployee == null) {
-                        currentRootEmployee = supervisor;
-                    } else {
-                        multipleRootErrorSet.add(supervisor + " is left as a root employee.");
-                    }
+
+                    multipleRootErrorSet.add(supervisor + " is left as a root employee.");
                 }
             }
+        }
+        if (!currentRootEmployee.equals(rootEmployee) && multipleRootErrorSet.size() > 0) {
+            multipleRootErrorSet.add(currentRootEmployee + " is left as a root employee.");
         }
         return multipleRootErrorSet;
     }
@@ -187,6 +185,26 @@ public class EmployeeRelationshipDataValidator {
         }
     }
 
+    public EmployeeRelationshipRestResponse basicEmptyDataCheck(
+            Map<String, String> newEmployeeRelationships) {
+        String errorMsg = "";
+        for (String employee : newEmployeeRelationships.keySet()) {
+            if (employee == null || employee.isEmpty()) {
+                errorMsg = "null or empty employee";
+                break;
+            }
+        }
+        if (errorMsg.length() > 0) {
+            ObjectWriter ow = new ObjectMapper().writer();
+            try {
+                return new EmployeeRelationshipRestResponse(true, ow.writeValueAsString(errorMsg));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return new EmployeeRelationshipRestResponse(false, "");
+    }
+
     public EmployeeRelationshipRestResponse validateEmployeeRelationshipEntities(
             Map<String, String> allNewRelationships) {
         List<String> allErrorMessageSet = new ArrayList<>();
@@ -194,11 +212,8 @@ public class EmployeeRelationshipDataValidator {
         Map<String, String> localEmployeeSupervisorMap = new HashMap<>(EMPLOYEE_SUPERVISOR_MAP);
         localEmployeeSupervisorMap.putAll(allNewRelationships);
 
-        String localRootEmployee = getNewRootEmployee(localEmployeeSupervisorMap, rootEmployee);
-
         allErrorMessageSet.addAll(
-                validateMultipleRoot(
-                        allNewRelationships, localRootEmployee, localEmployeeSupervisorMap));
+                validateMultipleRoot(allNewRelationships, localEmployeeSupervisorMap));
         allErrorMessageSet.addAll(
                 validateCircularRelationship(allNewRelationships, localEmployeeSupervisorMap));
 
@@ -225,8 +240,10 @@ public class EmployeeRelationshipDataValidator {
             }
 
             try {
+                String localRootEmployee =
+                        getNewRootEmployee(localEmployeeSupervisorMap, rootEmployee);
                 return new EmployeeRelationshipRestResponse(
-                        true,
+                        false,
                         ow.writeValueAsString(
                                 buildTheResultTree(
                                         allNewRelationships,
@@ -238,7 +255,7 @@ public class EmployeeRelationshipDataValidator {
         }
         try {
             return new EmployeeRelationshipRestResponse(
-                    false, ow.writeValueAsString(allErrorMessageSet));
+                    true, ow.writeValueAsString(allErrorMessageSet));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

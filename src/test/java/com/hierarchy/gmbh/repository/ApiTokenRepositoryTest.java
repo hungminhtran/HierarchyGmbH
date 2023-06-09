@@ -1,4 +1,4 @@
-package com.hierarchy.gmbh;
+package com.hierarchy.gmbh.repository;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.util.AssertionErrors.assertEquals;
