@@ -1,19 +1,19 @@
-#Intrucstion
-start the system: ```docker-compose up --build -d```
+# Instruction
+start the system: ```./run_hierarchy_gmbh.sh clean```
 
-#network information
+# network information
 By default, a new network interface 192.168.195.1/25 will be created. 
 Change the subnet to others if you have conflict problem.
 
-#Security
+# Security
 use the init api token (with quotes) : "token123" or "token456"
 To add your token, add a row into api_token_api table
 
-#Api example
+# Api example
 
-##add employee - supervisor relationship
+## add employee - supervisor relationship
 
-###request
+### request
 ```
 curl --location 'localhost:8080/add-employee-relationship' \
 --header 'X-API-KEY: token456' \
@@ -25,7 +25,7 @@ curl --location 'localhost:8080/add-employee-relationship' \
 "Sophie": "Jonas",
 }'
 ```
-###response
+### response
 ```
 {
     "Jonas": {
@@ -39,13 +39,13 @@ curl --location 'localhost:8080/add-employee-relationship' \
 }
 ```
 
-##get supervisor of supervisor
-###request
+## get supervisor of supervisor
+### request
 ```
 curl --location 'localhost:8080/employee-supervisor-of-supervisor?employee=Barbara' \
 --header 'X-API-KEY: token123'
 ```
-###response
+### response
 ```
 "Sophie"
 ```
