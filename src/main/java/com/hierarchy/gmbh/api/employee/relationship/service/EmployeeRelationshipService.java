@@ -75,7 +75,7 @@ public class EmployeeRelationshipService {
         throw new HierarchyGmbHException(employee, HttpStatus.UNPROCESSABLE_ENTITY.value());
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(rollbackOn = Exception.class)
     public String saveEmployeeData(String rawDataJsonStr) throws HierarchyGmbHException {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> rawData;
@@ -84,12 +84,18 @@ public class EmployeeRelationshipService {
         } catch (JsonProcessingException e) {
             LOGGER.error("data from user is not a json string " + e.getMessage());
             throw new HierarchyGmbHException(
-                    "data from user is not a json string" + e.getMessage(),
+                    "'data from user is not a json string'",
                     HttpStatus.UNPROCESSABLE_ENTITY.value());
         }
         List<EmployeeRelationshipEntity> entities = new ArrayList<>();
-        for (String key : rawData.keySet()) {
-            entities.add(new EmployeeRelationshipEntity(key, rawData.get(key)));
+        try {
+            for (String key : rawData.keySet()) {
+                entities.add(new EmployeeRelationshipEntity(key, rawData.get(key)));
+            }
+        } catch (Exception e) {
+            LOGGER.error("data from user malformed " + e.getMessage());
+            throw new HierarchyGmbHException(
+                    "'data from user malformed'", HttpStatus.UNPROCESSABLE_ENTITY.value());
         }
 
         EmployeeRelationshipRestResponse response =

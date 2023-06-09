@@ -32,13 +32,6 @@ public class EmployeeRelationshipDataValidator {
 
     private static volatile String rootEmployee;
 
-    public static void clearAllData() {
-        LOGGER.warn("clear all data may cause a lot issue");
-        EMPLOYEE_SUPERVISOR_MAP.clear();
-        SUPERVISOR_EMPLOYEE_MAP.clear();
-        rootEmployee = null;
-    }
-
     public EmployeeRelationshipDataValidator(
             EmployeeRelationshipRepository employeeRelationshipRepository) {
         LOGGER.info("initializing data");
@@ -82,10 +75,15 @@ public class EmployeeRelationshipDataValidator {
         }
     }
 
+    public static void clearAllData() {
+        LOGGER.warn("clear all data may cause a lot issues");
+        EMPLOYEE_SUPERVISOR_MAP.clear();
+        SUPERVISOR_EMPLOYEE_MAP.clear();
+        rootEmployee = null;
+    }
+
     public static void lock() {
-        if (!MUTEX.isLocked()) {
-            MUTEX.lock();
-        }
+        MUTEX.lock();
     }
 
     public static void unlock() {
@@ -94,8 +92,8 @@ public class EmployeeRelationshipDataValidator {
         }
     }
 
-    private boolean isEmployeeSupervisorOfSupervisor(
-            String employee, String supervisor, Map<String, String> employeeSupervisorMap) {
+    private boolean isManagerOfEmployee(
+            String employee, String manager, Map<String, String> employeeSupervisorMap) {
         Set<String> travelled = new HashSet<>();
         while (employeeSupervisorMap.containsKey(employee)) {
             if (travelled.contains(employee)) {
@@ -103,7 +101,7 @@ public class EmployeeRelationshipDataValidator {
             }
             travelled.add(employee);
             String localSupervisor = employeeSupervisorMap.get(employee);
-            if (localSupervisor.equals(supervisor)) {
+            if (localSupervisor.equals(manager)) {
                 return true;
             }
             employee = localSupervisor;
@@ -142,10 +140,11 @@ public class EmployeeRelationshipDataValidator {
         return currentRootEmployee;
     }
 
-    private Set<String> validateMultipleRoot(
+    private Set<String> validateMultipleRootEmployees(
             Map<String, String> allNewRelationship, Map<String, String> employeeRelationshipMap) {
         String currentRootEmployee = getNewRootEmployee(employeeRelationshipMap, rootEmployee);
         Set<String> multipleRootErrorSet = new HashSet<>();
+
         for (String employee : allNewRelationship.keySet()) {
             String supervisor = allNewRelationship.get(employee);
 
@@ -172,7 +171,7 @@ public class EmployeeRelationshipDataValidator {
         Set<String> circularErrorSet = new HashSet<>();
         for (String employee : allNewRelationships.keySet()) {
             String supervisor = allNewRelationships.get(employee);
-            if (isEmployeeSupervisorOfSupervisor(supervisor, employee, employeeRelationshipMap)) {
+            if (isManagerOfEmployee(supervisor, employee, employeeRelationshipMap)) {
                 circularErrorSet.add(employee + " and " + supervisor + " are created a cycle.");
             }
         }
@@ -225,7 +224,7 @@ public class EmployeeRelationshipDataValidator {
         if (allErrorMessageSet.size() == 0) {
 
             allErrorMessageSet.addAll(
-                    validateMultipleRoot(allNewRelationships, localEmployeeSupervisorMap));
+                    validateMultipleRootEmployees(allNewRelationships, localEmployeeSupervisorMap));
         }
 
         ObjectMapper mapper = new ObjectMapper();
@@ -239,35 +238,33 @@ public class EmployeeRelationshipDataValidator {
 
         ObjectWriter ow = mapper.writer();
 
-        if (allErrorMessageSet.size() == 0) {
-            Map<String, Set<String>> localSupervisorEmployeeMap =
-                    new HashMap<>(SUPERVISOR_EMPLOYEE_MAP);
-            for (String employee : allNewRelationships.keySet()) {
-                if (!localSupervisorEmployeeMap.containsKey(allNewRelationships.get(employee))) {
-                    localSupervisorEmployeeMap.put(
-                            allNewRelationships.get(employee), new HashSet<>());
-                }
-                localSupervisorEmployeeMap.get(allNewRelationships.get(employee)).add(employee);
-            }
-
+        if (allErrorMessageSet.size() != 0) {
             try {
-                String localRootEmployee =
-                        getNewRootEmployee(localEmployeeSupervisorMap, rootEmployee);
                 return new EmployeeRelationshipRestResponse(
-                        false,
-                        ow.writeValueAsString(
-                                buildTheResultTree(
-                                        allNewRelationships,
-                                        localSupervisorEmployeeMap,
-                                        localRootEmployee)));
-            } catch (Exception e) {
+                        true, ow.writeValueAsString(allErrorMessageSet));
+            } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
         }
+        Map<String, Set<String>> localSupervisorEmployeeMap =
+                new HashMap<>(SUPERVISOR_EMPLOYEE_MAP);
+        for (String employee : allNewRelationships.keySet()) {
+            if (!localSupervisorEmployeeMap.containsKey(allNewRelationships.get(employee))) {
+                localSupervisorEmployeeMap.put(allNewRelationships.get(employee), new HashSet<>());
+            }
+            localSupervisorEmployeeMap.get(allNewRelationships.get(employee)).add(employee);
+        }
+
         try {
+            String localRootEmployee = getNewRootEmployee(localEmployeeSupervisorMap, rootEmployee);
             return new EmployeeRelationshipRestResponse(
-                    true, ow.writeValueAsString(allErrorMessageSet));
-        } catch (JsonProcessingException e) {
+                    false,
+                    ow.writeValueAsString(
+                            buildTheResultTree(
+                                    allNewRelationships,
+                                    localSupervisorEmployeeMap,
+                                    localRootEmployee)));
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -289,39 +286,47 @@ public class EmployeeRelationshipDataValidator {
 
         if (allNewEmployees.contains(rootEmployee)) {
             result = new EmployeeRelationshipTreeNode(rootEmployee, new HashSet<>());
+
             EmployeeRelationshipTreeNode rootEmployeeRelationshipTreeNode =
                     new EmployeeRelationshipTreeNode(rootEmployee, new HashSet<>());
+
             result.getChildren().add(rootEmployeeRelationshipTreeNode);
+
             employeeRelationshipTreeNodeMap.put(rootEmployee, rootEmployeeRelationshipTreeNode);
         } else {
             result = new EmployeeRelationshipTreeNode(rootEmployee, new HashSet<>());
+
             employeeRelationshipTreeNodeMap.put(rootEmployee, result);
         }
 
         while (supervisorQueue.size() > 0) {
             String supervisor = supervisorQueue.poll();
 
-            Set<String> allWorkers = supervisorEmployeeMap.get(supervisor);
+            Set<String> allWorkersOfCurrentSupervisor = supervisorEmployeeMap.get(supervisor);
 
-            if (allWorkers == null || allWorkers.size() == 0) {
+            if (allWorkersOfCurrentSupervisor == null
+                    || allWorkersOfCurrentSupervisor.size() == 0) {
                 continue;
             }
-            supervisorQueue.addAll(allWorkers);
+            supervisorQueue.addAll(allWorkersOfCurrentSupervisor);
 
             Set<String> newWorkers =
-                    allWorkers.stream()
+                    allWorkersOfCurrentSupervisor.stream()
                             .filter(allNewEmployees::contains)
                             .collect(Collectors.toSet());
 
             if (newWorkers != null && newWorkers.size() > 0) {
+
                 EmployeeRelationshipTreeNode currentEmployeeRelationshipTreeNode =
                         employeeRelationshipTreeNodeMap.get(supervisor);
                 for (String worker : newWorkers) {
                     EmployeeRelationshipTreeNode childEmployeeRelationshipTreeNode =
                             new EmployeeRelationshipTreeNode(worker, new HashSet<>());
+
                     currentEmployeeRelationshipTreeNode
                             .getChildren()
                             .add(childEmployeeRelationshipTreeNode);
+
                     employeeRelationshipTreeNodeMap.put(worker, childEmployeeRelationshipTreeNode);
                 }
             }

@@ -39,12 +39,10 @@ import javax.annotation.PostConstruct;
 public class GetSupervisorOfSupervisorOfEmployeeControllerTest {
     private static final Logger LOGGER =
             LogManager.getLogger(AddEmployeeRelationshipControllerTest.class);
-
+    private static final String API_URL = "/employee-supervisor-of-supervisor";
     @Autowired private WebApplicationContext context;
     @Autowired private ApiTokenRepository apiTokenRepository;
     @Autowired private EmployeeRelationshipRepository employeeRelationshipRepository;
-    private static final String API_URL = "/employee-supervisor-of-supervisor";
-
     private MockMvc mockMvc;
 
     @PostConstruct

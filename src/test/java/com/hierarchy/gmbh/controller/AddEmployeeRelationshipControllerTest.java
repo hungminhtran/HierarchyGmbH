@@ -15,6 +15,7 @@ import com.hierarchy.gmbh.api.employee.relationship.jpa.validation.EmployeeRelat
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,11 +40,10 @@ import javax.annotation.PostConstruct;
 public class AddEmployeeRelationshipControllerTest {
     private static final Logger LOGGER =
             LogManager.getLogger(AddEmployeeRelationshipControllerTest.class);
-
+    private static final String API_URL = "/add-employee-relationship";
     @Autowired private WebApplicationContext context;
     @Autowired private ApiTokenRepository apiTokenRepository;
     @Autowired private EmployeeRelationshipRepository employeeRelationshipRepository;
-
     private MockMvc mockMvc;
 
     @PostConstruct
@@ -66,7 +66,7 @@ public class AddEmployeeRelationshipControllerTest {
     @Test
     public void authorization() throws Exception {
         mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("X-API-KEY", "incorrect api key"))
                 .andExpect(status().is(HttpStatus.FORBIDDEN.value()));
@@ -83,7 +83,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(data))
                                 .header("X-API-KEY", "correct api key"));
@@ -106,7 +106,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(data))
                                 .header("X-API-KEY", "correct api key"));
@@ -119,13 +119,53 @@ public class AddEmployeeRelationshipControllerTest {
     }
 
     @Test
+    @RepeatedTest(5)
+    public void addEmployeeRelationshipDataRepeatTest() throws Exception {
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+
+        Map<String, String> data = new TreeMap<>();
+        data.put("2", "4");
+        data.put("4", "3");
+        data.put("5", "2");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post(API_URL)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(data))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+        resultActions
+                .andExpect(status().is(HttpStatus.OK.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("{\"3\":{\"4\":{\"2\":{\"5\":{}}}}}"));
+    }
+
+    @Test
     public void addEmployeeRelationshipInvalidDataTest() throws Exception {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{1:2, 3}")
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    public void addEmployeeRelationshipInvalidDataTypeTest() throws Exception {
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post(API_URL)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{1:2, 3:4}")
                                 .header("X-API-KEY", "correct api key"));
         LOGGER.info(
                 "result action " + resultActions.andReturn().getResponse().getContentAsString());
@@ -148,7 +188,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(data))
                                 .header("X-API-KEY", "correct api key"));
@@ -176,7 +216,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));
@@ -201,7 +241,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(data))
                                 .header("X-API-KEY", "correct api key"));
@@ -231,7 +271,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));
@@ -256,7 +296,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));
@@ -286,7 +326,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));
@@ -319,7 +359,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));
@@ -344,7 +384,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));
@@ -376,7 +416,7 @@ public class AddEmployeeRelationshipControllerTest {
 
         ResultActions resultActions =
                 mockMvc.perform(
-                        post("/add-employee-relationship")
+                        post(API_URL)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectWriter.writeValueAsString(testData))
                                 .header("X-API-KEY", "correct api key"));

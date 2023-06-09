@@ -4,6 +4,21 @@ import java.util.Collection;
 import java.util.Set;
 
 public class EmployeeRelationshipTreeNode {
+    @Override
+    public int hashCode() {
+        return key.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || !getClass().equals(obj.getClass())) {
+            return false;
+        }
+        EmployeeRelationshipTreeNode objTreeNode = (EmployeeRelationshipTreeNode) obj;
+        return key.equals(objTreeNode.getKey());
+    }
+
     private final String key;
     private final Collection<EmployeeRelationshipTreeNode> children;
 
