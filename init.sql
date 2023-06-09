@@ -3,7 +3,6 @@
 -- Host: 192.168.195.2    Database: hierarchy_gmbh
 -- ------------------------------------------------------
 -- Server version	8.0.33-0ubuntu0.20.04.2
-CREATE SCHEMA `hierarchy_gmbh` ;
 USE `hierarchy_gmbh`;
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
