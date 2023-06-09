@@ -14,6 +14,7 @@ services:
       - MYSQL_DATABASE=hierarchy_gmbh
     volumes:
       - ./mysql-dump:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/start.sql
     networks:
       gmbh_nets:
   server:
