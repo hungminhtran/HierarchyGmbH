@@ -32,6 +32,13 @@ public class EmployeeRelationshipDataValidator {
 
     private static volatile String rootEmployee;
 
+    public static void clearAllData() {
+        LOGGER.warn("clear all data may cause a lot issue");
+        EMPLOYEE_SUPERVISOR_MAP.clear();
+        SUPERVISOR_EMPLOYEE_MAP.clear();
+        rootEmployee = null;
+    }
+
     public EmployeeRelationshipDataValidator(
             EmployeeRelationshipRepository employeeRelationshipRepository) {
         LOGGER.info("initializing data");
@@ -119,16 +126,16 @@ public class EmployeeRelationshipDataValidator {
                 }
             }
         }
-        Set<String> travalled = new HashSet<>();
+        Set<String> travelled = new HashSet<>();
         while (employeeSupervisorMap.containsKey(currentRootEmployee)) {
-            if (travalled.contains(currentRootEmployee)) {
+            if (travelled.contains(currentRootEmployee)) {
                 return rootEmployee;
             }
             String rootSupervisor = employeeSupervisorMap.get(currentRootEmployee);
             if (rootSupervisor == null || rootSupervisor.isEmpty()) {
                 return currentRootEmployee;
             }
-            travalled.add(currentRootEmployee);
+            travelled.add(currentRootEmployee);
             currentRootEmployee = rootSupervisor;
         }
 
@@ -144,15 +151,12 @@ public class EmployeeRelationshipDataValidator {
 
             if (supervisor == null
                     || supervisor.isEmpty() && !employee.equals(currentRootEmployee)) {
-
                 multipleRootErrorSet.add(employee + " is left as a root employee.");
-            } else {
+            } else if (supervisor != null
+                    && !supervisor.isEmpty()
+                    && !supervisor.equals(currentRootEmployee)) {
                 String supervisorOfSupervisor = employeeRelationshipMap.get(supervisor);
-
-                if ((supervisorOfSupervisor == null || supervisorOfSupervisor.isEmpty())
-                        && supervisor != null
-                        && !supervisor.equals(currentRootEmployee)) {
-
+                if ((supervisorOfSupervisor == null || supervisorOfSupervisor.isEmpty())) {
                     multipleRootErrorSet.add(supervisor + " is left as a root employee.");
                 }
             }

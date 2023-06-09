@@ -43,7 +43,7 @@ tasks.withType(Test) {
         exceptionFormat TestExceptionFormat.SHORT
         showExceptions true
         showCauses true
-        showStackTraces true
+        showStackTraces false
 
         // set options for log level DEBUG and INFO
         debug {
@@ -69,6 +69,6 @@ tasks.withType(Test) {
     }
     testLogging.showStandardStreams = true
     useJUnitPlatform()
-    
+
 }
 

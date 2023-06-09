@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.hierarchy.gmbh.api.employee.relationship.jpa.entity.ApiTokenEntity;
 import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.ApiTokenRepository;
 import com.hierarchy.gmbh.api.employee.relationship.jpa.repository.EmployeeRelationshipRepository;
+import com.hierarchy.gmbh.api.employee.relationship.jpa.validation.EmployeeRelationshipDataValidator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -62,6 +63,7 @@ public class EmployeeRelationshipControllerTest {
         apiTokenRepository.deleteAll();
         employeeRelationshipRepository.deleteAll();
         apiTokenRepository.save(new ApiTokenEntity("correct api key"));
+        EmployeeRelationshipDataValidator.clearAllData();
         LOGGER.info("reset test data complete");
     }
 
@@ -96,7 +98,8 @@ public class EmployeeRelationshipControllerTest {
                                 .content(objectWriter.writeValueAsString(data))
                                 .header("X-API-KEY", "correct api key"));
         LOGGER.info(
-                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+                "result action addEmployeeRelationshipEmptyDataTest "
+                        + resultActions.andReturn().getResponse().getContentAsString());
         resultActions
                 .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -250,5 +253,118 @@ public class EmployeeRelationshipControllerTest {
                 .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("[\"4 and 1 are created a cycle.\"]\n"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipLoopFor2NodeInBranchTest() throws Exception {
+        addEmployeeRelationshipDataSmokeTest();
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        Map<String, String> testData = new TreeMap<>();
+        testData.put("5", "4");
+        testData.put("6", "5");
+        testData.put("7", "6");
+        testData.put("5", "7");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(testData))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content()
+                                .json(
+                                        "[\"6 and 5 are created a cycle.\","
+                                                + "\"7 and 6 are created a cycle.\","
+                                                + "\"5 and 7 are created a cycle.\"]\n"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipLoopForRootAndNodeInBranchTest() throws Exception {
+        addEmployeeRelationshipDataSmokeTest();
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        Map<String, String> testData = new TreeMap<>();
+        testData.put("5", "4");
+        testData.put("6", "5");
+        testData.put("7", "6");
+        testData.put("4", "7");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(testData))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content()
+                                .json(
+                                        "[\"6 and 5 are created a cycle.\","
+                                                + "\"7 and 6 are created a cycle.\","
+                                                + "\"5 and 4 are created a cycle.\","
+                                                + "\"4 and 7 are created a cycle.\"]\n"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipLoopForSubBranchAndMainBranchTest() throws Exception {
+        addEmployeeRelationshipDataSmokeTest();
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        Map<String, String> testData = new TreeMap<>();
+        testData.put("5", "4");
+        testData.put("6", "5");
+        testData.put("7", "6");
+        testData.put("4", "8");
+        testData.put("8", "9");
+        testData.put("8", "1");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(testData))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content()
+                                .json(
+                                        "[\"8 and 1 are created a cycle.\","
+                                                + "\"4 and 8 are created a cycle.\"]\n"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipOnlyRootTest() throws Exception {
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        Map<String, String> testData = new TreeMap<>();
+        testData.put("5", "");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(testData))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("{\"5\":{}}\n"));
     }
 }
