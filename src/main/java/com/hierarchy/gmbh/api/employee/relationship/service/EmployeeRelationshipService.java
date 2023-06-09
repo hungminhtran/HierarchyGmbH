@@ -2,6 +2,7 @@ package com.hierarchy.gmbh.api.employee.relationship.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.hierarchy.gmbh.api.employee.relationship.data.EmployeeRelationshipRestResponse;
 import com.hierarchy.gmbh.api.employee.relationship.exception.HierarchyGmbHException;
 import com.hierarchy.gmbh.api.employee.relationship.jpa.entity.EmployeeRelationshipEntity;
@@ -43,18 +44,20 @@ public class EmployeeRelationshipService {
     }
 
     public EmployeeRelationshipRestResponse getSupervisorOfSupervisorName(String employee) {
-
+        ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
         try {
             return new EmployeeRelationshipRestResponse(
-                    false, getSupervisorOfEmployee(employee, 0, 2));
+                    false, ow.writeValueAsString(getSupervisorOfEmployee(employee, 0, 2)));
         } catch (HierarchyGmbHException e) {
             if (e.getMessage().equals(employee)) {
                 return new EmployeeRelationshipRestResponse(
-                        true, "Employee doesn't have supervisor");
+                        true, "\"Employee doesn't have supervisor\"");
             } else {
                 return new EmployeeRelationshipRestResponse(
-                        true, "Supervisor of the employee doesn't have supervisor");
+                        true, "\"Supervisor of the employee doesn't have supervisor\"");
             }
+        } catch (JsonProcessingException e) {
+            return null;
         }
     }
 

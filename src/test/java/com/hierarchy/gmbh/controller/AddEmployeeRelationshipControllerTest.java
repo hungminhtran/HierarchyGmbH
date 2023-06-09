@@ -1,7 +1,6 @@
 package com.hierarchy.gmbh.controller;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,9 +36,9 @@ import javax.annotation.PostConstruct;
  */
 @ExtendWith(MockitoExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class EmployeeRelationshipControllerTest {
+public class AddEmployeeRelationshipControllerTest {
     private static final Logger LOGGER =
-            LogManager.getLogger(EmployeeRelationshipControllerTest.class);
+            LogManager.getLogger(AddEmployeeRelationshipControllerTest.class);
 
     @Autowired private WebApplicationContext context;
     @Autowired private ApiTokenRepository apiTokenRepository;
@@ -51,9 +50,6 @@ public class EmployeeRelationshipControllerTest {
     public void setup() {
         LOGGER.info("set up test data");
         mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-        apiTokenRepository.deleteAll();
-        employeeRelationshipRepository.deleteAll();
-        apiTokenRepository.save(new ApiTokenEntity("correct api key"));
         LOGGER.info("set up test data complete");
     }
 
@@ -71,12 +67,6 @@ public class EmployeeRelationshipControllerTest {
     public void authorization() throws Exception {
         mockMvc.perform(
                         post("/add-employee-relationship")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .header("X-API-KEY", "incorrect api key"))
-                .andExpect(status().is(HttpStatus.FORBIDDEN.value()));
-
-        mockMvc.perform(
-                        get("/employee-supervisor")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("X-API-KEY", "incorrect api key"))
                 .andExpect(status().is(HttpStatus.FORBIDDEN.value()));
@@ -98,8 +88,7 @@ public class EmployeeRelationshipControllerTest {
                                 .content(objectWriter.writeValueAsString(data))
                                 .header("X-API-KEY", "correct api key"));
         LOGGER.info(
-                "result action addEmployeeRelationshipEmptyDataTest "
-                        + resultActions.andReturn().getResponse().getContentAsString());
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
         resultActions
                 .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -363,8 +352,43 @@ public class EmployeeRelationshipControllerTest {
                 "result action " + resultActions.andReturn().getResponse().getContentAsString());
 
         resultActions
-                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(status().is(HttpStatus.OK.value()))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("{\"5\":{}}\n"));
+                .andExpect(content().json("{\"5\":{}}"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipMultipleChildrenTest() throws Exception {
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        Map<String, String> testData = new TreeMap<>();
+        testData.put("2", "1");
+        testData.put("3", "1");
+        testData.put("4", "1");
+        testData.put("5", "2");
+        testData.put("6", "2");
+        testData.put("7", "2");
+        testData.put("8", "3");
+        testData.put("9", "3");
+        testData.put("10", "3");
+        testData.put("11", "4");
+        testData.put("12", "4");
+        testData.put("13", "4");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(testData))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+
+        resultActions
+                .andExpect(status().is(HttpStatus.OK.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content()
+                                .json(
+                                        "{\"1\":{\"2\":{\"5\":{},\"7\":{},\"6\":{}},\"3\":{\"10\":{},\"9\":{},\"8\":{}},\"4\":{\"11\":{},\"12\":{},\"13\":{}}}}"));
     }
 }
