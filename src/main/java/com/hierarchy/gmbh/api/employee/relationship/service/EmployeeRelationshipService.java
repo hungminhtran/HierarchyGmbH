@@ -39,7 +39,7 @@ public class EmployeeRelationshipService {
             }
         }
 
-        LOGGER.info("initializing data");
+        LOGGER.info("data was initialized");
     }
 
     public String getSupervisorOfSupervisorName(String employee) throws HierarchyGmbHException {
@@ -91,11 +91,13 @@ public class EmployeeRelationshipService {
                     employeeRelationshipDataValidator.validateEmployeeRelationshipEntities(rawData);
 
             if (response.isError()) {
+                EmployeeRelationshipDataValidator.unlock();
                 throw new HierarchyGmbHException(
                         response.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY.value());
             }
             employeeRelationshipRepository.saveAll(entities);
             employeeRelationshipDataValidator.updateStaticData(rawData);
+            EmployeeRelationshipDataValidator.unlock();
 
             return response.getMessage();
         } finally {

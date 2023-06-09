@@ -27,8 +27,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import javax.annotation.PostConstruct;
 
@@ -195,5 +194,61 @@ public class EmployeeRelationshipControllerTest {
                 .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("[\"6 is left as a root employee.\"]\n"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipLoopFromInputDataTest() throws Exception {
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+
+        Map<String, String> data = new TreeMap<>();
+        data.put("11", "6");
+        data.put("1", "2");
+        data.put("2", "1");
+        data.put("3", "4");
+        data.put("4", "3");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(data))
+                                .header("X-API-KEY", "correct api key"));
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content()
+                                .json(
+                                        "[\"1 and 2 are created a cycle.\","
+                                                + "\"4 and 3 are created a cycle.\","
+                                                + "\"2 and 1 are created a cycle.\","
+                                                + "\"3 and 4 are created a cycle.\"]\n"));
+    }
+
+    @Test
+    public void addEmployeeRelationshipLoopFromDatabaseDataTest() throws Exception {
+        addEmployeeRelationshipDataSmokeTest();
+        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        Map<String, String> testData = new TreeMap<>();
+        testData.put("4", "1");
+        testData.put("6", "7");
+        testData.put("7", "6");
+        testData.put("7", "8");
+
+        ResultActions resultActions =
+                mockMvc.perform(
+                        post("/add-employee-relationship")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectWriter.writeValueAsString(testData))
+                                .header("X-API-KEY", "correct api key"));
+
+        LOGGER.info(
+                "result action " + resultActions.andReturn().getResponse().getContentAsString());
+        resultActions
+                .andExpect(status().is(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("[\"4 and 1 are created a cycle.\"]\n"));
     }
 }

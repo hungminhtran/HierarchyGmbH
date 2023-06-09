@@ -68,7 +68,7 @@ public class EmployeeRelationshipDataValidator {
             rootEmployee = getNewRootEmployee(EMPLOYEE_SUPERVISOR_MAP, null);
             MUTEX.unlock();
         } finally {
-            if (MUTEX.isHeldByCurrentThread()) {
+            if (MUTEX.isLocked()) {
                 MUTEX.unlock();
             }
             LOGGER.info("init data complete");
@@ -76,13 +76,13 @@ public class EmployeeRelationshipDataValidator {
     }
 
     public static void lock() {
-        if (!MUTEX.isHeldByCurrentThread()) {
+        if (!MUTEX.isLocked()) {
             MUTEX.lock();
         }
     }
 
     public static void unlock() {
-        if (MUTEX.isHeldByCurrentThread()) {
+        if (MUTEX.isLocked()) {
             MUTEX.unlock();
         }
     }
@@ -119,12 +119,16 @@ public class EmployeeRelationshipDataValidator {
                 }
             }
         }
-
+        Set<String> travalled = new HashSet<>();
         while (employeeSupervisorMap.containsKey(currentRootEmployee)) {
+            if (travalled.contains(currentRootEmployee)) {
+                return rootEmployee;
+            }
             String rootSupervisor = employeeSupervisorMap.get(currentRootEmployee);
             if (rootSupervisor == null || rootSupervisor.isEmpty()) {
                 return currentRootEmployee;
             }
+            travalled.add(currentRootEmployee);
             currentRootEmployee = rootSupervisor;
         }
 
@@ -133,13 +137,11 @@ public class EmployeeRelationshipDataValidator {
 
     private Set<String> validateMultipleRoot(
             Map<String, String> allNewRelationship, Map<String, String> employeeRelationshipMap) {
-
         String currentRootEmployee = getNewRootEmployee(employeeRelationshipMap, rootEmployee);
-
         Set<String> multipleRootErrorSet = new HashSet<>();
-
         for (String employee : allNewRelationship.keySet()) {
             String supervisor = allNewRelationship.get(employee);
+
             if (supervisor == null
                     || supervisor.isEmpty() && !employee.equals(currentRootEmployee)) {
 
@@ -175,6 +177,7 @@ public class EmployeeRelationshipDataValidator {
 
     public void updateStaticData(Map<String, String> allNewRelationships) {
         EMPLOYEE_SUPERVISOR_MAP.putAll(allNewRelationships);
+
         rootEmployee = getNewRootEmployee(EMPLOYEE_SUPERVISOR_MAP, rootEmployee);
 
         for (String employee : allNewRelationships.keySet()) {
@@ -207,15 +210,19 @@ public class EmployeeRelationshipDataValidator {
 
     public EmployeeRelationshipRestResponse validateEmployeeRelationshipEntities(
             Map<String, String> allNewRelationships) {
+
         List<String> allErrorMessageSet = new ArrayList<>();
 
         Map<String, String> localEmployeeSupervisorMap = new HashMap<>(EMPLOYEE_SUPERVISOR_MAP);
         localEmployeeSupervisorMap.putAll(allNewRelationships);
 
         allErrorMessageSet.addAll(
-                validateMultipleRoot(allNewRelationships, localEmployeeSupervisorMap));
-        allErrorMessageSet.addAll(
                 validateCircularRelationship(allNewRelationships, localEmployeeSupervisorMap));
+        if (allErrorMessageSet.size() == 0) {
+
+            allErrorMessageSet.addAll(
+                    validateMultipleRoot(allNewRelationships, localEmployeeSupervisorMap));
+        }
 
         ObjectMapper mapper = new ObjectMapper();
 
